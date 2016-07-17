@@ -80,14 +80,36 @@ int main (int argc, char **argv[]) {
 		if ( buf[1] == DHCP_HW_ETH ) {
 			printf("Recieved DHCP Hardware Type of ETHERNET\n");
 		}
-		printf("Transaction ID: %02x, %02x, %02x, %02x\n", (unsigned)(unsigned char)buf[4], 
-								   (unsigned)(unsigned char)buf[5], 
-								   (unsigned)(unsigned char)buf[6], 
-								   (unsigned)(unsigned char)buf[7]);
+
+		// Client's MAC Address:
+		unsigned char clientmac[6];
+		memcpy(clientmac,&buf[28],6);
+		printf("Client MAC Address: %02x:%02x:%02x:%02x:%02x:%02x\n", clientmac[0],
+										clientmac[1],
+										clientmac[2],
+										clientmac[3],
+										clientmac[4],
+										clientmac[5],
+										clientmac[6]);
+		// Our transaction ID:
+		unsigned char trans[4];
+		memcpy(trans,&buf[4],4);
+		printf("Transaction ID: %02x%02x%02x%02x\n", trans[0], 
+								   trans[1], 
+								   trans[2], 
+								   trans[3]);
+
+		// Our elapsed seconds for transaction:
+		unsigned char sec[2];
+		memcpy(sec,&buf[8],2);
+		printf("Seconds Elapsed: %02d%02d\n", sec[0], sec[1]);
+
+
+		// Entire DGRAM dump:
 		printf("Data:\n");
 		int i;
 		for ( i = 0; i <= TINKER_BUFLEN; i++ ) {
-			printf("%04x " , buf[i]);
+			printf("%02x " , (unsigned)(unsigned char)buf[i]);
 		}
 		printf("End Data:\n");
 		
