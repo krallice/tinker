@@ -18,6 +18,7 @@ void udpListen() {
 }
 
 int main (int argc, char **argv[]) {
+
 	if ( TINKER_DEBUG ) {
 		printf("Starting tinker dhcp ip server now...\n");
 	}
@@ -73,7 +74,22 @@ int main (int argc, char **argv[]) {
 		 
 		//print details of the client/peer and the data received
 		printf("Received packet from %s:%d\n", inet_ntoa(si_other.sin_addr), ntohs(si_other.sin_port));
-		printf("Data: %s\n" , buf);
+		if ( buf[0] == DHCP_MSG_REQUEST ) {
+			printf("Recieved DHCP Message type of REQUEST\n");
+		}
+		if ( buf[1] == DHCP_HW_ETH ) {
+			printf("Recieved DHCP Hardware Type of ETHERNET\n");
+		}
+		printf("Transaction ID: %02x, %02x, %02x, %02x\n", (unsigned)(unsigned char)buf[4], 
+								   (unsigned)(unsigned char)buf[5], 
+								   (unsigned)(unsigned char)buf[6], 
+								   (unsigned)(unsigned char)buf[7]);
+		printf("Data:\n");
+		int i;
+		for ( i = 0; i <= TINKER_BUFLEN; i++ ) {
+			printf("%04x " , buf[i]);
+		}
+		printf("End Data:\n");
 		
 		// Reset:
 		memset(buf, '\0', TINKER_BUFLEN);
