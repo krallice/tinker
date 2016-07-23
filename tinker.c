@@ -24,6 +24,51 @@ void die(char *s) {
 void udpListen() {
 }
 
+// Parse our DHCP Options:
+void parse_options(unsigned char b[]) {
+
+	printf("Starting Parser\n");
+	printf("First byte is %02x\n", b[0]);
+
+	printf("First option is is %02x\n", b[DHCP_OPTION_START]);
+
+	int i = DHCP_OPTION_START;
+	int l;
+
+	while ( b[i] != 0xFF ) {
+		printf("i is %d\n", i);
+		// DHCP MESSAGETYPE
+		if ( b[i] == DHCP_OP_MSG_TYPE ) {
+			printf("DHCP OPTION: DHCP MESSAGE TYPE\n");
+			// Get our length:
+			l = (int)b[i+1];
+			printf("DHCP OPTION LENGTH: %d\n", l);
+
+		} else if ( b[i] == DHCP_OP_HOSTNAME ) {
+			printf("DHCP OPTION: HOSTNAME\n");
+			// Get our length:
+			l = (int)b[i+1];
+			printf("DHCP OPTION LENGTH: %d\n", l);
+			char h[l];
+			memcpy(&h,&b[i+2],l);
+			printf("ADVERTISED HOSTNAME: %s\n", h);
+			
+			
+
+		// Else Unknown Option Type:	
+		} else {
+			printf("DHCP OPTION: UNKNOWN, NUMBER: %02x\n", b[i]);
+			// Get our length:
+			l = (int)b[i+1];
+			printf("DHCP OPTION LENGTH: %d\n", l);
+		}
+		i = i + l + 2;
+	}
+
+
+
+}
+
 void print_transaction_table(trans_tb_t *head) { 
 
 	trans_tb_t * current = head;
@@ -74,6 +119,7 @@ void add_transaction_table(trans_tb_t *head, unsigned char* t) {
 	}
 }
 
+// Old proto function for add_transaction_table()
 void append_transaction_table(trans_tb_t *head, unsigned char* t) {
 
 	trans_tb_t * current = head;
@@ -117,7 +163,7 @@ int main (int argc, char **argv[]) {
 
 	int s, i, slen = sizeof(si_other) , recv_len;
 	int broadcast = 1;
-	char buf[TINKER_BUFLEN];
+	unsigned char buf[TINKER_BUFLEN];
 
 	// Create a UDP/Datagram Socket: (s)
 	if ((s=socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) == -1) {
@@ -189,6 +235,8 @@ int main (int argc, char **argv[]) {
 				add_transaction_table(trans_tb_head, trans);
 				//append_transaction_table(trans_tb_head, trans);
 				print_transaction_table(trans_tb_head);
+
+				parse_options(buf);
 
 				// Entire DGRAM dump:
 				printf("Data:\n");

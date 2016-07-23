@@ -30,3 +30,9 @@
 
 #define DHCP_MSG_REQUEST 1
 #define DHCP_HW_ETH 1
+
+// Amount of bytes into the DHCP request the options begin:
+#define DHCP_OPTION_START 240
+
+#define DHCP_OP_MSG_TYPE 53
+#define DHCP_OP_HOSTNAME 12
