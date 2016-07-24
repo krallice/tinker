@@ -13,6 +13,7 @@
 typedef struct trans_tb {
 	unsigned char trans[4];
 	unsigned int count;
+	unsigned int state;
 	struct trans_tb * next;
 } trans_tb_t;
 
@@ -21,11 +22,16 @@ void die(char *s) {
     exit(1);
 }
 
-void udpListen() {
+void send_dhcp_offer(trans_tb_t *ct) {
+
+	printf("Getting Ready to Send DHCP OFFER\n");
+
+
+
 }
 
 // Parse our DHCP Options:
-void parse_options(unsigned char b[]) {
+int parse_options(unsigned char b[], trans_tb_t *ct) {
 
 	printf("Starting Parser\n");
 	printf("First byte is %02x\n", b[0]);
@@ -43,7 +49,10 @@ void parse_options(unsigned char b[]) {
 			// Get our length:
 			l = (int)b[i+1];
 			printf("DHCP OPTION LENGTH: %d\n", l);
-
+			if ( b[i+2] == DHCP_DISCOVER ) {
+				printf("dhcp_discover mode\n");
+				ct->state = DHCP_DISCOVER;
+			}
 		} else if ( b[i] == DHCP_OP_HOSTNAME ) {
 			printf("DHCP OPTION: HOSTNAME\n");
 			// Get our length:
@@ -52,9 +61,6 @@ void parse_options(unsigned char b[]) {
 			char h[l];
 			memcpy(&h,&b[i+2],l);
 			printf("ADVERTISED HOSTNAME: %s\n", h);
-			
-			
-
 		// Else Unknown Option Type:	
 		} else {
 			printf("DHCP OPTION: UNKNOWN, NUMBER: %02x\n", b[i]);
@@ -64,9 +70,13 @@ void parse_options(unsigned char b[]) {
 		}
 		i = i + l + 2;
 	}
-
-
-
+	
+	// Based on our parsed options, perform an action:
+	if ( ct->state == DHCP_DISCOVER ) {
+		return DHCP_OFFER;
+	} else {
+		return -1;
+	}
 }
 
 void print_transaction_table(trans_tb_t *head) { 
@@ -83,13 +93,14 @@ void print_transaction_table(trans_tb_t *head) {
 								current->trans[3]);
 		
 		printf("Current Count: %d ", current->count);
+		printf("Current State: %d ", current->state);
 		printf("Current Address: %p ", current);
 		printf("Next Address: %p\n", current->next);
 		current = current->next;
 	}
 }
 
-void add_transaction_table(trans_tb_t *head, unsigned char* t) {
+trans_tb_t *add_transaction_table(trans_tb_t *head, unsigned char* t) {
 
 	trans_tb_t * current = head;
 	trans_tb_t * last = head;
@@ -97,11 +108,12 @@ void add_transaction_table(trans_tb_t *head, unsigned char* t) {
 
 	// Traverse our existing linked list:
 	while ( current != NULL ) {
-		printf("loop\n");
+		//printf("loop\n");
 		// If existing:
 		if ( memcmp(current->trans, t, 4) == 0 ) {
 			printf("Match for %p, count was %d, is now %d\n", current, current->count, current->count+1);
 			current->count = current->count + 1;
+			return current;
 			existing = 1;
 		}
 		last = current;
@@ -110,13 +122,15 @@ void add_transaction_table(trans_tb_t *head, unsigned char* t) {
 
 	if ( ! existing ) {
 		if ( current  == NULL ) {
-			printf("Brand New Transaction");
+			printf("Brand New Transaction\n");
 			last->next = malloc(sizeof(trans_tb_t));
 			memcpy(last->next->trans,t,4);
 			last->next->count = 1;
 			last->next->next = NULL;
 		}
 	}
+
+	return last->next;
 }
 
 // Old proto function for add_transaction_table()
@@ -146,6 +160,7 @@ int main (int argc, char **argv[]) {
 	trans_tb_t * trans_tb_head;
 	trans_tb_head = malloc(sizeof(trans_tb_t));
 	memset(trans_tb_head->trans, 0, sizeof(trans_tb_head));
+	trans_tb_head->state = 0;
 	trans_tb_head->next = NULL;
 
 	// Define Sockaddr structures for me (server) and other (clients):
@@ -232,12 +247,18 @@ int main (int argc, char **argv[]) {
 				printf("Seconds Elapsed: %02d%02d\n", sec[0], sec[1]);
 
 				// Start playing with our transaction table:
-				add_transaction_table(trans_tb_head, trans);
+				
+				int ret;
+				trans_tb_t * ct;
+				ct = add_transaction_table(trans_tb_head, trans);
+				if ((ret = parse_options(buf, ct)) == DHCP_OFFER) {
+					send_dhcp_offer(ct);
+				}
 				//append_transaction_table(trans_tb_head, trans);
 				print_transaction_table(trans_tb_head);
 
-				parse_options(buf);
 
+				/*
 				// Entire DGRAM dump:
 				printf("Data:\n");
 				int i;
@@ -245,6 +266,7 @@ int main (int argc, char **argv[]) {
 					printf("%02x " , (unsigned)(unsigned char)buf[i]);
 				}
 				printf("End Data:\n");
+				*/
 			
 			}
 		}
