@@ -24,6 +24,7 @@ typedef struct trans_tb {
 	unsigned char trans[4];
 	unsigned int count;
 	unsigned int state;
+	struct ip_tb * ip_offer;
 	struct trans_tb * next;
 } trans_tb_t;
 
@@ -40,13 +41,44 @@ void die(char *s) {
     exit(1);
 }
 
-void send_dhcp_offer(trans_tb_t *ct) {
+int allocate_free_ip(ip_tb_t *head, trans_tb_t *ct) {
+
+	// Init & skip first empty head node:
+	ip_tb_t * current = head;
+	current = current->next;
+
+	char current_ip[32] = "";
+
+	if ( ct->ip_offer != NULL ) {
+		inet_ntop(AF_INET, &(ct->ip_offer->host), current_ip, 32);
+		printf("IP Already Allocated for Transaction, IP: %s\n", current_ip);
+		return 0;
+	}
+
+	while ( current != NULL ) {	
+		if ( current->used == 0 ) {
+			inet_ntop(AF_INET, &(current->host), current_ip, 32);
+			printf("Found Free IP: %s, allocating\n", current_ip);
+			current->used = 1;
+			ct->ip_offer = current;
+			return 0;
+		}
+		current = current->next;
+	}
+	return 1;
+}
+
+void send_dhcp_offer(trans_tb_t *ct, ip_tb_t *ip_tb_head) {
 
 	printf("Getting Ready to Send DHCP OFFER\n");
 	char a[] = "Under Construction!\n";
 
+	if ( allocate_free_ip(ip_tb_head, ct) != 0 ) {
+		printf("No spare IPs!\n");
+		return;
+	}
 
-
+	// Continue now to format DHCP_OFFER to client:
 }
 
 // Parse our DHCP Options:
@@ -145,6 +177,7 @@ trans_tb_t *add_transaction_table(trans_tb_t *head, unsigned char* t) {
 			last->next = malloc(sizeof(trans_tb_t));
 			memcpy(last->next->trans,t,4);
 			last->next->count = 1;
+			last->next->ip_offer = NULL;
 			last->next->next = NULL;
 		}
 	}
@@ -165,9 +198,8 @@ void append_transaction_table(trans_tb_t *head, unsigned char* t) {
 	// Create our new element on the end:
 	current->next = malloc(sizeof(trans_tb_t));
 	memcpy(current->next->trans,t,4);
+	current->next->ip_offer = NULL;
 	current->next->next = NULL;
-
-
 }
 
 // Dynamically allocate and initialise our IP Table:
@@ -210,7 +242,6 @@ void init_ip_table(ip_tb_t *head) {
 		current_address.s_addr = htonl(ntohl(start_address.s_addr) + i);
 		current = current->next;
 	}
-
 }
 
 void print_ip_table(ip_tb_t *head) {
@@ -241,6 +272,7 @@ int main (int argc, char **argv[]) {
 	trans_tb_head = malloc(sizeof(trans_tb_t));
 	memset(trans_tb_head->trans, 0, sizeof(trans_tb_head));
 	trans_tb_head->state = 0;
+	trans_tb_head->ip_offer = NULL;
 	trans_tb_head->next = NULL;
 
 	// Let's build our IP Table:
@@ -340,7 +372,7 @@ int main (int argc, char **argv[]) {
 				trans_tb_t * ct;
 				ct = add_transaction_table(trans_tb_head, trans);
 				if ((ret = parse_options(buf, ct)) == DHCP_OFFER) {
-					send_dhcp_offer(ct);
+					send_dhcp_offer(ct, ip_tb_head);
 					char a[] = "DHCP_OFFER_PLACEHOLDER_UNDER_CONSTRUCTION";
 				}
 				//append_transaction_table(trans_tb_head, trans);
