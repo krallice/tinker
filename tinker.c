@@ -7,7 +7,17 @@
  * See the file "LICENSE" for the full license governing this code.
 */
 
+// DHCP State Machine:
+//# dhclient -v eth2
+
+//DHCPDISCOVER on eth2 to 255.255.255.255 port 67 interval 3 (xid=0x10c1ff2a)
+//DHCPOFFER from 192.168.1.1
+//DHCPREQUEST on eth2 to 255.255.255.255 port 67 (xid=0x10c1ff2a)
+//DHCPACK from 192.168.1.1 (xid=0x10c1ff2a)
+//bound to 192.168.1.105 -- renewal in 37569 seconds.
+
 #include "tinker.h"
+#include "iptable.h"
 
 // Linked list for our transaction table:
 typedef struct trans_tb {
@@ -17,6 +27,14 @@ typedef struct trans_tb {
 	struct trans_tb * next;
 } trans_tb_t;
 
+// Linked list for our IP Assignment table:
+typedef struct ip_tb {
+	struct in_addr host;
+	unsigned int used;
+	unsigned char mac[6];
+	struct ip_tb * next;
+} ip_tb_t;
+
 void die(char *s) {
     perror(s);
     exit(1);
@@ -25,6 +43,7 @@ void die(char *s) {
 void send_dhcp_offer(trans_tb_t *ct) {
 
 	printf("Getting Ready to Send DHCP OFFER\n");
+	char a[] = "Under Construction!\n";
 
 
 
@@ -148,6 +167,67 @@ void append_transaction_table(trans_tb_t *head, unsigned char* t) {
 	memcpy(current->next->trans,t,4);
 	current->next->next = NULL;
 
+
+}
+
+// Dynamically allocate and initialise our IP Table:
+void init_ip_table(ip_tb_t *head) {
+
+	ip_tb_t * current = head;
+
+	int ret;
+
+	struct in_addr start_address;
+	struct in_addr end_address;
+	struct in_addr current_address;
+
+	char first_ip[] = START_IP;
+	char end_ip[] = END_IP;
+
+	inet_pton(AF_INET, first_ip, &start_address);
+	inet_pton(AF_INET, first_ip, &current_address);
+	inet_pton(AF_INET, end_ip, &end_address);
+
+	char current_ip[32] = "";
+
+	int i = 0;
+	while ( ntohl(current_address.s_addr) <= ntohl(end_address.s_addr) ) {
+	
+		//Print:
+		inet_ntop(AF_INET, &current_address, current_ip, 32);
+		//printf("current_ip as string is %s\n", current_ip);
+
+		// Create our linked list node:
+		//printf("current is %p\n", current);
+		current->next = malloc(sizeof(ip_tb_t));
+		memset(current->next,0,sizeof(ip_tb_t));
+		current->next->used = 0;
+		current->next->next = NULL;
+		current->next->host.s_addr = current_address.s_addr;
+
+		// Increment:
+		i++;
+		current_address.s_addr = htonl(ntohl(start_address.s_addr) + i);
+		current = current->next;
+	}
+
+}
+
+void print_ip_table(ip_tb_t *head) {
+
+	if ( TINKER_DEBUG ) {
+		printf("Printing IP Table\n");
+	}
+
+	ip_tb_t * current = head;
+
+	char current_ip[32] = "";
+
+	while ( current != NULL ) {
+		inet_ntop(AF_INET, &(current->host), current_ip, 32);
+		printf("IP Node %p -- Used: %d -- IP: %s\n", current, current->used, current_ip);
+		current = current->next;
+	}
 }
 
 int main (int argc, char **argv[]) {
@@ -162,6 +242,14 @@ int main (int argc, char **argv[]) {
 	memset(trans_tb_head->trans, 0, sizeof(trans_tb_head));
 	trans_tb_head->state = 0;
 	trans_tb_head->next = NULL;
+
+	// Let's build our IP Table:
+	ip_tb_t * ip_tb_head;
+	ip_tb_head = malloc(sizeof(ip_tb_t));
+	memset(ip_tb_head,0,sizeof(ip_tb_head));
+	ip_tb_head->next = NULL;
+	init_ip_table(ip_tb_head);
+	print_ip_table(ip_tb_head);
 
 	// Define Sockaddr structures for me (server) and other (clients):
 	// sockaddr_in prototype:
@@ -253,6 +341,7 @@ int main (int argc, char **argv[]) {
 				ct = add_transaction_table(trans_tb_head, trans);
 				if ((ret = parse_options(buf, ct)) == DHCP_OFFER) {
 					send_dhcp_offer(ct);
+					char a[] = "DHCP_OFFER_PLACEHOLDER_UNDER_CONSTRUCTION";
 				}
 				//append_transaction_table(trans_tb_head, trans);
 				print_transaction_table(trans_tb_head);
