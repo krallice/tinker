@@ -29,6 +29,8 @@
 #define TINKER_PORT_SERVER 67
 #define TINKER_PORT_CLIENT 68
 
+#define TRANSACTION_LIFETIME 30
+
 // Core DHCP Values:
 #define DHCP_MSG_REQUEST 1
 #define DHCP_HW_ETH 1

@@ -24,6 +24,7 @@ typedef struct trans_tb {
 	unsigned char trans[4];
 	unsigned int count;
 	unsigned int state;
+	unsigned int timestamp;
 	struct ip_tb * ip_offer;
 	struct trans_tb * next;
 } trans_tb_t;
@@ -136,6 +137,8 @@ void print_transaction_table(trans_tb_t *head) {
 	
 	printf("Printing Transaction Table:\n");
 
+	unsigned int ctime = (unsigned int)time(NULL);
+
 	while ( current != NULL ) {
 		printf("Node: ");
 		printf("Transaction ID: %02x%02x%02x%02x ", 	current->trans[0], 
@@ -145,10 +148,51 @@ void print_transaction_table(trans_tb_t *head) {
 		
 		printf("Current Count: %d ", current->count);
 		printf("Current State: %d ", current->state);
+		printf("Last Update: %d (%d diff) ", current->timestamp, ctime - current->timestamp);
 		printf("Current Address: %p ", current);
 		printf("Next Address: %p\n", current->next);
 		current = current->next;
 	}
+}
+
+void purge_transaction_table(trans_tb_t *head) {
+
+	// Assign and skip head node:
+	trans_tb_t * current = head;
+
+	trans_tb_t * previous = current;
+	current = current->next;
+
+	printf("Purging Stale Records From Transaction Table:\n");
+	unsigned int ctime = (unsigned int)time(NULL);
+
+	while ( current != NULL ) {
+
+		if ( ctime - current->timestamp >= TRANSACTION_LIFETIME ) {
+			printf("Transaction ID: %02x%02x%02x%02x ", 	current->trans[0], 
+									current->trans[1], 
+									current->trans[2], 
+									current->trans[3]);
+			printf("candidate for destruction, ");
+			printf("Last Update: %d (%d diff)\n", current->timestamp, ctime - current->timestamp);
+			
+			// "Skip" over our current node in terms of linkage:
+			previous->next = current->next;
+
+			trans_tb_t * del = current;
+
+			previous = previous->next;
+			current = current->next;
+
+			free(del);
+
+		// Else, nexxxt:
+		} else {
+			previous = previous->next;
+			current = current->next;
+		}
+	}
+
 }
 
 trans_tb_t *add_transaction_table(trans_tb_t *head, unsigned char* t) {
@@ -164,6 +208,7 @@ trans_tb_t *add_transaction_table(trans_tb_t *head, unsigned char* t) {
 		if ( memcmp(current->trans, t, 4) == 0 ) {
 			printf("Match for %p, count was %d, is now %d\n", current, current->count, current->count+1);
 			current->count = current->count + 1;
+			current->timestamp = (unsigned int)time(NULL);
 			return current;
 			existing = 1;
 		}
@@ -177,6 +222,7 @@ trans_tb_t *add_transaction_table(trans_tb_t *head, unsigned char* t) {
 			last->next = malloc(sizeof(trans_tb_t));
 			memcpy(last->next->trans,t,4);
 			last->next->count = 1;
+			last->next->timestamp = (unsigned int)time(NULL);
 			last->next->ip_offer = NULL;
 			last->next->next = NULL;
 		}
@@ -376,8 +422,12 @@ int main (int argc, char **argv[]) {
 					char a[] = "DHCP_OFFER_PLACEHOLDER_UNDER_CONSTRUCTION";
 				}
 				//append_transaction_table(trans_tb_head, trans);
+				
+				// Purge trans table:
+				
+				// Print our trans table:
 				print_transaction_table(trans_tb_head);
-
+				purge_transaction_table(trans_tb_head);
 
 				/*
 				// Entire DGRAM dump:
