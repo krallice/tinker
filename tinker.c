@@ -179,11 +179,15 @@ void purge_transaction_table(trans_tb_t *head) {
 			// "Skip" over our current node in terms of linkage:
 			previous->next = current->next;
 
+			// Unassign IP linked to this transaction:
 			trans_tb_t * del = current;
+			del->ip_offer->used = 0;
 
+			// Clean up linkage:
 			previous = previous->next;
 			current = current->next;
 
+			// Blow this transaction away:
 			free(del);
 
 		// Else, nexxxt:
