@@ -22,6 +22,7 @@
 // Linked list for our transaction table:
 typedef struct trans_tb {
 	unsigned char trans[4];
+	unsigned char clientmac[6];
 	unsigned int count;
 	unsigned int state;
 	unsigned int timestamp;
@@ -80,6 +81,8 @@ void send_dhcp_offer(trans_tb_t *ct, ip_tb_t *ip_tb_head) {
 	}
 
 	// Continue now to format DHCP_OFFER to client:
+	
+
 }
 
 // Parse our DHCP Options:
@@ -140,12 +143,28 @@ void print_transaction_table(trans_tb_t *head) {
 	unsigned int ctime = (unsigned int)time(NULL);
 
 	while ( current != NULL ) {
+
+		char allocated_ip[32] = "";
+
 		printf("Node: ");
 		printf("Transaction ID: %02x%02x%02x%02x ", 	current->trans[0], 
 								current->trans[1], 
 								current->trans[2], 
 								current->trans[3]);
-		
+		printf("Client MAC Address: %02x:%02x:%02x:%02x:%02x:%02x ", current->clientmac[0],
+										current->clientmac[1],
+										current->clientmac[2],
+										current->clientmac[3],
+										current->clientmac[4],
+										current->clientmac[5],
+										current->clientmac[6]);
+		// Print our IP:
+		if ( current->ip_offer != NULL ) {
+                        inet_ntop(AF_INET, &(current->ip_offer->host), allocated_ip, 32);
+			printf("Allocated IP: %s ", allocated_ip);
+
+		}
+	
 		printf("Current Count: %d ", current->count);
 		printf("Current State: %d ", current->state);
 		printf("Last Update: %d (%d diff) ", current->timestamp, ctime - current->timestamp);
@@ -199,7 +218,7 @@ void purge_transaction_table(trans_tb_t *head) {
 
 }
 
-trans_tb_t *add_transaction_table(trans_tb_t *head, unsigned char* t) {
+trans_tb_t *add_transaction_table(trans_tb_t *head, unsigned char* t, unsigned char* m) {
 
 	trans_tb_t * current = head;
 	trans_tb_t * last = head;
@@ -225,6 +244,7 @@ trans_tb_t *add_transaction_table(trans_tb_t *head, unsigned char* t) {
 			printf("Brand New Transaction\n");
 			last->next = malloc(sizeof(trans_tb_t));
 			memcpy(last->next->trans,t,4);
+			memcpy(last->next->clientmac, m, 6);
 			last->next->count = 1;
 			last->next->timestamp = (unsigned int)time(NULL);
 			last->next->ip_offer = NULL;
@@ -371,6 +391,29 @@ int main (int argc, char **argv[]) {
 		die("bind");
 	}
 
+	struct sockaddr_in sockAddr;
+	int sockLen=sizeof(sockAddr);
+	memset((char *) &sockAddr, 0, sockLen);
+
+                         // INET/IP Socket on DESTPORT to DESTINATION:
+                                 sockAddr.sin_family = AF_INET;
+                                         sockAddr.sin_port = htons(7777);
+                                                 inet_aton("255.255.255.255", &sockAddr.sin_addr);
+
+	
+	int sendStringLen;
+	char sendString[10] = "emma rules";
+	sendStringLen = strlen(sendString) - 1;
+
+	printf("sending:\n\n");
+	if (sendto(s, sendString, sendStringLen, 0, (struct sockaddr* )&sockAddr, sizeof(sockAddr)) == -1) {
+		printf("HEY\n\n");
+		die("sendto()");
+	}
+	
+
+	return;
+
 	// Listen for Packets:
 	while(1) {
 
@@ -420,19 +463,18 @@ int main (int argc, char **argv[]) {
 				
 				int ret;
 				trans_tb_t * ct;
-				ct = add_transaction_table(trans_tb_head, trans);
+				ct = add_transaction_table(trans_tb_head, trans, clientmac);
 				if ((ret = parse_options(buf, ct)) == DHCP_OFFER) {
 					send_dhcp_offer(ct, ip_tb_head);
 					char a[] = "DHCP_OFFER_PLACEHOLDER_UNDER_CONSTRUCTION";
 				}
 				//append_transaction_table(trans_tb_head, trans);
 				
-				// Purge trans table:
-				
 				// Print our trans table:
 				print_transaction_table(trans_tb_head);
 				purge_transaction_table(trans_tb_head);
 
+				
 				/*
 				// Entire DGRAM dump:
 				printf("Data:\n");
