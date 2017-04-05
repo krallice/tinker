@@ -19,6 +19,23 @@
 #include "tinker.h"
 #include "iptable.h"
 
+typedef struct dhcp_msg {
+	unsigned char op;	
+	unsigned char htype;
+	unsigned char hlen;
+	unsigned char hops;
+	unsigned char trans[4];
+	unsigned char secs[2];
+	unsigned char flags[2];
+	unsigned char ciaddr[4];
+	unsigned char yiaddr[4];
+	unsigned char siaddr[4];
+	unsigned char giaddr[4];
+	unsigned char chaddr[16];
+	unsigned char sname[64];
+	unsigned char file[128];
+} dhcp_msg_t;
+
 // Linked list for our transaction table:
 typedef struct trans_tb {
 	unsigned char trans[4];
@@ -331,6 +348,59 @@ void print_ip_table(ip_tb_t *head) {
 	}
 }
 
+int parse_dhcp_msg(char *buf, int buflen, dhcp_msg_t *dmsg) {
+
+	/*typedef struct dhcp_msg {
+		unsigned char op;	
+		unsigned char htype;
+		unsigned char hlen;
+		unsigned char hops;
+		unsigned char trans[4];
+		unsigned char secs[2];
+		unsigned char flags[2];
+		unsigned char ciaddr[4];
+		unsigned char yiaddr[4];
+		unsigned char siaddr[4];
+		unsigned char giaddr[4];
+		unsigned char chaddr[16];
+		unsigned char sname[64];
+		unsigned char file[128];
+	} dhcp_msg_t; */
+
+	if ( buf[1] == DHCP_HW_ETH ) {
+		printf("Recieved DHCP Hardware Type of ETHERNET\n");
+		memcpy( &(dmsg->htype), &buf[1], 1);
+		
+		// Client's MAC Address:
+		memcpy( &(dmsg->chaddr), &buf[28], 6);
+		printf("Client MAC Address, lets go: %02x:%02x:%02x:%02x:%02x:%02x\n", 	dmsg->chaddr[0],
+										dmsg->chaddr[1],
+										dmsg->chaddr[2],
+										dmsg->chaddr[3],
+										dmsg->chaddr[4],
+										dmsg->chaddr[5],
+										dmsg->chaddr[6]);
+
+		// Transaction ID:
+		memcpy( &(dmsg->trans), &buf[4], 4);
+		printf("Transaction ID: %02x%02x%02x%02x\n", 	dmsg->trans[0],
+								dmsg->trans[1],
+								dmsg->trans[2],
+								dmsg->trans[3]);
+
+		// Our elapsed seconds for transaction:
+		memcpy( &(dmsg->secs), &buf[8], 2);
+		printf("Seconds Elapsed: %02d%02d\n", dmsg->secs[0], dmsg->secs[1]);
+
+
+
+	} else {
+		die("Only DHCP HW Ethernet Type Supported");
+	}
+
+	return 1;
+}
+
 int main (int argc, char **argv[]) {
 
 	if ( TINKER_DEBUG ) {
@@ -395,38 +465,26 @@ int main (int argc, char **argv[]) {
 	int sockLen=sizeof(sockAddr);
 	memset((char *) &sockAddr, 0, sockLen);
 
-                         // INET/IP Socket on DESTPORT to DESTINATION:
-                                 sockAddr.sin_family = AF_INET;
-                                         sockAddr.sin_port = htons(7777);
-                                                 inet_aton("255.255.255.255", &sockAddr.sin_addr);
-
-	
-	int sendStringLen;
-	char sendString[10] = "emma rules";
-	sendStringLen = strlen(sendString) - 1;
-
-	printf("sending:\n\n");
-	if (sendto(s, sendString, sendStringLen, 0, (struct sockaddr* )&sockAddr, sizeof(sockAddr)) == -1) {
-		printf("HEY\n\n");
-		die("sendto()");
-	}
-	
-
-	return;
-
 	// Listen for Packets:
 	while(1) {
 
 		printf("Waiting for data...\n");
 		fflush(stdout);
-		 
-		//try to receive some data, this is a blocking call
+
+		// Wait for incoming data, this is a blocking call
 		if ((recv_len = recvfrom(s, buf, TINKER_BUFLEN, 0, (struct sockaddr *) &si_other, &slen)) == -1) {
 		    die("recvfrom()");
 		}
 		 
-		//print details of the client/peer and the data received
+		// Print IP/Port details of the client from the socket
 		printf("Received packet from %s:%d\n", inet_ntoa(si_other.sin_addr), ntohs(si_other.sin_port));
+
+		// Push buffer into our dhcp_msg structure:
+		dhcp_msg_t * dmsg;
+		dmsg = malloc(sizeof(dhcp_msg_t));
+		if ( !parse_dhcp_msg(buf, TINKER_BUFLEN, dmsg)) {
+			die("didnt work!");
+		}
 
 		// Only support ETHERNET Hardware for v1:
 		if ( buf[1] == DHCP_HW_ETH ) {
