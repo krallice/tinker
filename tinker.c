@@ -196,38 +196,49 @@ void purge_transaction_table(trans_tb_t *head) {
 	// Assign and skip head node:
 	trans_tb_t * current = head;
 
+	// Grab our "previous" node aswell:
 	trans_tb_t * previous = current;
 	current = current->next;
 
 	printf("Purging Stale Records From Transaction Table:\n");
+	// Get current time:
 	unsigned int ctime = (unsigned int)time(NULL);
 
 	while ( current != NULL ) {
 
+		// Compare time deltas:
 		if ( ctime - current->timestamp >= TRANSACTION_LIFETIME ) {
-			printf("Transaction ID: %02x%02x%02x%02x ", 	current->trans[0], 
+
+			// Print our diags:
+			printf("\n\n\nTransaction ID: %02x%02x%02x%02x ", 	current->trans[0], 
 									current->trans[1], 
 									current->trans[2], 
 									current->trans[3]);
 			printf("candidate for destruction, ");
 			printf("Last Update: %d (%d diff)\n", current->timestamp, ctime - current->timestamp);
 			
-			// "Skip" over our current node in terms of linkage:
-			previous->next = current->next;
-
 			// Unassign IP linked to this transaction:
+			printf("Deleting IP\n");
 			trans_tb_t * del = current;
-			del->ip_offer->used = 0;
+			if ( del->ip_offer != NULL ) {
+				del->ip_offer->used = 0;
+			}
 
 			// Clean up linkage:
-			previous = previous->next;
+			printf("Cleaning up linkage\n");
+			// Assign the previous node's "next" linkage to the node AFTER the one we just delete:
+			previous->next = current->next;
+			
+			// Increment the current node
 			current = current->next;
 
 			// Blow this transaction away:
+			printf("deleting current\n");
 			free(del);
 
-		// Else, nexxxt:
+		// Else, next:
 		} else {
+			// Increment over:
 			previous = previous->next;
 			current = current->next;
 		}
