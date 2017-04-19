@@ -7,6 +7,9 @@
  * See the file "LICENSE" for the full license governing this code.
 */
 
+#ifndef TINKER_H
+#define TINKER_H
+
 #include <stdio.h> // Standard Printing/IO Functions
 #include <string.h> // String Manipulation Functions
 #include <stdlib.h> // Standard Functions including exit();
@@ -46,3 +49,5 @@
 // Our DHCP Option Numbers:
 #define DHCP_OP_MSG_TYPE 53
 #define DHCP_OP_HOSTNAME 12
+
+#endif // TINKER_H

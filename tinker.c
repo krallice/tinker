@@ -18,6 +18,7 @@
 
 #include "tinker.h"
 #include "iptable.h"
+#include "transtable.h"
 
 typedef struct dhcp_msg {
 	unsigned char op;	
@@ -36,65 +37,20 @@ typedef struct dhcp_msg {
 	unsigned char file[128];
 } dhcp_msg_t;
 
-// Linked list for our transaction table:
-typedef struct trans_tb {
-	unsigned char trans[4];
-	unsigned char clientmac[6];
-	unsigned int count;
-	unsigned int state;
-	unsigned int timestamp;
-	struct ip_tb * ip_offer;
-	struct trans_tb * next;
-} trans_tb_t;
-
-// Linked list for our IP Assignment table:
-typedef struct ip_tb {
-	struct in_addr host;
-	unsigned int used;
-	unsigned char mac[6];
-	struct ip_tb * next;
-} ip_tb_t;
-
 void die(char *s) {
     perror(s);
     exit(1);
 }
 
-int allocate_free_ip(ip_tb_t *head, trans_tb_t *ct) {
-
-	// Init & skip first empty head node:
-	ip_tb_t * current = head;
-	current = current->next;
-
-	char current_ip[32] = "";
-
-	if ( ct->ip_offer != NULL ) {
-		inet_ntop(AF_INET, &(ct->ip_offer->host), current_ip, 32);
-		printf("IP Already Allocated for Transaction, IP: %s\n", current_ip);
-		return 0;
-	}
-
-	while ( current != NULL ) {	
-		if ( current->used == 0 ) {
-			inet_ntop(AF_INET, &(current->host), current_ip, 32);
-			printf("Found Free IP: %s, allocating\n", current_ip);
-			current->used = 1;
-			ct->ip_offer = current;
-			return 0;
-		}
-		current = current->next;
-	}
-	return 1;
-}
-
 void send_dhcp_offer(trans_tb_t *ct, ip_tb_t *ip_tb_head) {
 
 	printf("Getting Ready to Send DHCP OFFER\n");
-	char a[] = "Under Construction!\n";
 
 	if ( allocate_free_ip(ip_tb_head, ct) != 0 ) {
 		printf("No spare IPs!\n");
 		return;
+	} else {
+		printf("allocate_free_ip returned successfully\n");
 	}
 
 	// Continue now to format DHCP_OFFER to client:
@@ -121,6 +77,8 @@ int parse_options(unsigned char b[], trans_tb_t *ct) {
 			// Get our length:
 			l = (int)b[i+1];
 			printf("DHCP OPTION LENGTH: %d\n", l);
+			// Diag:
+			printf("MSG TYPE: %d\n", (int)b[i+2]);
 			if ( b[i+2] == DHCP_DISCOVER ) {
 				printf("dhcp_discover mode\n");
 				ct->state = DHCP_DISCOVER;
@@ -148,214 +106,6 @@ int parse_options(unsigned char b[], trans_tb_t *ct) {
 		return DHCP_OFFER;
 	} else {
 		return -1;
-	}
-}
-
-void print_transaction_table(trans_tb_t *head) { 
-
-	trans_tb_t * current = head;
-	
-	printf("Printing Transaction Table:\n");
-
-	unsigned int ctime = (unsigned int)time(NULL);
-
-	while ( current != NULL ) {
-
-		char allocated_ip[32] = "";
-
-		printf("Node: ");
-		printf("Transaction ID: %02x%02x%02x%02x ", 	current->trans[0], 
-								current->trans[1], 
-								current->trans[2], 
-								current->trans[3]);
-		printf("Client MAC Address: %02x:%02x:%02x:%02x:%02x:%02x ", current->clientmac[0],
-										current->clientmac[1],
-										current->clientmac[2],
-										current->clientmac[3],
-										current->clientmac[4],
-										current->clientmac[5],
-										current->clientmac[6]);
-		// Print our IP:
-		if ( current->ip_offer != NULL ) {
-                        inet_ntop(AF_INET, &(current->ip_offer->host), allocated_ip, 32);
-			printf("Allocated IP: %s ", allocated_ip);
-
-		}
-	
-		printf("Current Count: %d ", current->count);
-		printf("Current State: %d ", current->state);
-		printf("Last Update: %d (%d diff) ", current->timestamp, ctime - current->timestamp);
-		printf("Current Address: %p ", current);
-		printf("Next Address: %p\n", current->next);
-		current = current->next;
-	}
-}
-
-void purge_transaction_table(trans_tb_t *head) {
-
-	// Assign and skip head node:
-	trans_tb_t * current = head;
-
-	// Grab our "previous" node aswell:
-	trans_tb_t * previous = current;
-	current = current->next;
-
-	printf("Purging Stale Records From Transaction Table:\n");
-	// Get current time:
-	unsigned int ctime = (unsigned int)time(NULL);
-
-	while ( current != NULL ) {
-
-		// Compare time deltas:
-		if ( ctime - current->timestamp >= TRANSACTION_LIFETIME ) {
-
-			// Print our diags:
-			printf("\n\n\nTransaction ID: %02x%02x%02x%02x ", 	current->trans[0], 
-									current->trans[1], 
-									current->trans[2], 
-									current->trans[3]);
-			printf("candidate for destruction, ");
-			printf("Last Update: %d (%d diff)\n", current->timestamp, ctime - current->timestamp);
-			
-			// Unassign IP linked to this transaction:
-			printf("Deleting IP\n");
-			trans_tb_t * del = current;
-			if ( del->ip_offer != NULL ) {
-				del->ip_offer->used = 0;
-			}
-
-			// Clean up linkage:
-			printf("Cleaning up linkage\n");
-			// Assign the previous node's "next" linkage to the node AFTER the one we just delete:
-			previous->next = current->next;
-			
-			// Increment the current node
-			current = current->next;
-
-			// Blow this transaction away:
-			printf("deleting current\n");
-			free(del);
-
-		// Else, next:
-		} else {
-			// Increment over:
-			previous = previous->next;
-			current = current->next;
-		}
-	}
-
-}
-
-trans_tb_t *add_transaction_table(trans_tb_t *head, unsigned char* t, unsigned char* m) {
-
-	trans_tb_t * current = head;
-	trans_tb_t * last = head;
-	int existing = 0;
-
-	// Traverse our existing linked list:
-	while ( current != NULL ) {
-		//printf("loop\n");
-		// If existing:
-		if ( memcmp(current->trans, t, 4) == 0 ) {
-			printf("Match for %p, count was %d, is now %d\n", current, current->count, current->count+1);
-			current->count = current->count + 1;
-			current->timestamp = (unsigned int)time(NULL);
-			return current;
-			existing = 1;
-		}
-		last = current;
-		current = current->next;
-	}
-
-	if ( ! existing ) {
-		if ( current  == NULL ) {
-			printf("Brand New Transaction\n");
-			last->next = malloc(sizeof(trans_tb_t));
-			memcpy(last->next->trans,t,4);
-			memcpy(last->next->clientmac, m, 6);
-			last->next->count = 1;
-			last->next->timestamp = (unsigned int)time(NULL);
-			last->next->ip_offer = NULL;
-			last->next->next = NULL;
-		}
-	}
-
-	return last->next;
-}
-
-// Old proto function for add_transaction_table()
-void append_transaction_table(trans_tb_t *head, unsigned char* t) {
-
-	trans_tb_t * current = head;
-
-	// Get to the last element:
-	while ( current->next != NULL ) {
-		current = current->next;
-	}
-	
-	// Create our new element on the end:
-	current->next = malloc(sizeof(trans_tb_t));
-	memcpy(current->next->trans,t,4);
-	current->next->ip_offer = NULL;
-	current->next->next = NULL;
-}
-
-// Dynamically allocate and initialise our IP Table:
-void init_ip_table(ip_tb_t *head) {
-
-	ip_tb_t * current = head;
-
-	int ret;
-
-	struct in_addr start_address;
-	struct in_addr end_address;
-	struct in_addr current_address;
-
-	char first_ip[] = START_IP;
-	char end_ip[] = END_IP;
-
-	inet_pton(AF_INET, first_ip, &start_address);
-	inet_pton(AF_INET, first_ip, &current_address);
-	inet_pton(AF_INET, end_ip, &end_address);
-
-	char current_ip[32] = "";
-
-	int i = 0;
-	while ( ntohl(current_address.s_addr) <= ntohl(end_address.s_addr) ) {
-	
-		//Print:
-		inet_ntop(AF_INET, &current_address, current_ip, 32);
-		//printf("current_ip as string is %s\n", current_ip);
-
-		// Create our linked list node:
-		//printf("current is %p\n", current);
-		current->next = malloc(sizeof(ip_tb_t));
-		memset(current->next,0,sizeof(ip_tb_t));
-		current->next->used = 0;
-		current->next->next = NULL;
-		current->next->host.s_addr = current_address.s_addr;
-
-		// Increment:
-		i++;
-		current_address.s_addr = htonl(ntohl(start_address.s_addr) + i);
-		current = current->next;
-	}
-}
-
-void print_ip_table(ip_tb_t *head) {
-
-	if ( TINKER_DEBUG ) {
-		printf("Printing IP Table\n");
-	}
-
-	ip_tb_t * current = head;
-
-	char current_ip[32] = "";
-
-	while ( current != NULL ) {
-		inet_ntop(AF_INET, &(current->host), current_ip, 32);
-		printf("IP Node %p -- Used: %d -- IP: %s\n", current, current->used, current_ip);
-		current = current->next;
 	}
 }
 

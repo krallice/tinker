@@ -11,6 +11,7 @@
 #include "iptable.h"
 #include "transtable.h"
 
+// Print our transaction table:
 void print_transaction_table(trans_tb_t *head) { 
 
 	trans_tb_t * current = head;
@@ -51,6 +52,7 @@ void print_transaction_table(trans_tb_t *head) {
 	}
 }
 
+// For transactions that have being going on past our TRANSACTION_LIFETIME, blow them away:
 void purge_transaction_table(trans_tb_t *head) {
 
 	// Assign and skip head node:
@@ -107,6 +109,7 @@ void purge_transaction_table(trans_tb_t *head) {
 
 }
 
+// Add transactions (new or existing) into table:
 trans_tb_t *add_transaction_table(trans_tb_t *head, unsigned char* t, unsigned char* m) {
 
 	trans_tb_t * current = head;
