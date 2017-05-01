@@ -170,18 +170,12 @@ int main (int argc, char **argv[]) {
 	
 	// Init the first transaction table entry for our linked list:
 	trans_tb_t * trans_tb_head;
-	trans_tb_head = malloc(sizeof(trans_tb_t));
-	memset(trans_tb_head->trans, 0, sizeof(trans_tb_head));
-	trans_tb_head->state = 0;
-	trans_tb_head->ip_offer = NULL;
-	trans_tb_head->next = NULL;
+	trans_tb_head = init_transaction_table();
 
 	// Let's build our IP Table:
 	ip_tb_t * ip_tb_head;
-	ip_tb_head = malloc(sizeof(ip_tb_t));
-	memset(ip_tb_head,0,sizeof(ip_tb_head));
-	ip_tb_head->next = NULL;
-	init_ip_table(ip_tb_head);
+	ip_tb_head = init_ip_table();
+
 	print_ip_table(ip_tb_head);
 
 	// Define Sockaddr structures for me (server) and other (clients):

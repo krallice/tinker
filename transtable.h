@@ -25,9 +25,12 @@ typedef struct trans_tb {
 } trans_tb_t;
 
 // Function Prototypes:
+
+trans_tb_t *init_transaction_table();
+void append_transaction_table(trans_tb_t *head, unsigned char* t);
+
 void print_transaction_table(trans_tb_t *head);
 void purge_transaction_table(trans_tb_t *head);
 trans_tb_t *add_transaction_table(trans_tb_t *head, unsigned char* t, unsigned char* m);
-void append_transaction_table(trans_tb_t *head, unsigned char* t);
 
 #endif // TRANSTABLE_H

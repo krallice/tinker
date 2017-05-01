@@ -27,8 +27,8 @@ typedef struct ip_tb {
 
 // Prototypes:
 
+ip_tb_t * init_ip_table();
 int allocate_free_ip(ip_tb_t *head, trans_tb_t *ct);
-void init_ip_table(ip_tb_t *head);
 void print_ip_table(ip_tb_t *head);
 
 #endif // IPTABLE_H

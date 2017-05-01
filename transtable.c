@@ -11,6 +11,24 @@
 #include "iptable.h"
 #include "transtable.h"
 
+
+// Initialise our transaction table:
+trans_tb_t *init_transaction_table() {
+
+	trans_tb_t * trans_tb_head;
+
+	// Allocate and wipe:
+	trans_tb_head = malloc(sizeof(trans_tb_t));
+	memset(trans_tb_head->trans, 0, sizeof(trans_tb_head));
+
+	// Clear values:
+	trans_tb_head->state = 0;
+	trans_tb_head->ip_offer = NULL;
+	trans_tb_head->next = NULL;
+
+	return trans_tb_head;
+}
+
 // Print our transaction table:
 void print_transaction_table(trans_tb_t *head) { 
 

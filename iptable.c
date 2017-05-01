@@ -12,9 +12,19 @@
 
 
 // Dynamically allocate and initialise our IP Table:
-void init_ip_table(ip_tb_t *head) {
+ip_tb_t * init_ip_table() {
 
-	ip_tb_t * current = head;
+	ip_tb_t * ip_tb_head;
+
+	// Allocate and wipe:
+	ip_tb_head = malloc(sizeof(ip_tb_t));
+	memset(ip_tb_head,0,sizeof(ip_tb_head));
+
+	// Init our NULL pointer for Linked List:
+	ip_tb_head->next = NULL;
+
+	// Head pointer, for us to iterate through and build:
+	ip_tb_t * current = ip_tb_head;
 
 	int ret;
 
@@ -51,6 +61,8 @@ void init_ip_table(ip_tb_t *head) {
 		current_address.s_addr = htonl(ntohl(start_address.s_addr) + i);
 		current = current->next;
 	}
+
+	return ip_tb_head;
 }
 
 
