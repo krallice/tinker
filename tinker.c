@@ -53,7 +53,7 @@ void send_dhcp_offer(trans_tb_t *ct, ip_tb_t *ip_tb_head) {
 		printf("allocate_free_ip returned successfully\n");
 	}
 
-	// Continue now to format DHCP_OFFER to client:
+	// Continue now to format DHCP_STATE_OFFER to client:
 	
 
 }
@@ -64,9 +64,9 @@ int parse_options(unsigned char b[], trans_tb_t *ct) {
 	printf("Starting Parser\n");
 	printf("First byte is %02x\n", b[0]);
 
-	printf("First option is is %02x\n", b[DHCP_OPTION_START]);
+	printf("First option is is %02x\n", b[DHCP_OP_START]);
 
-	int i = DHCP_OPTION_START;
+	int i = DHCP_OP_START;
 	int l;
 
 	while ( b[i] != 0xFF ) {
@@ -79,9 +79,9 @@ int parse_options(unsigned char b[], trans_tb_t *ct) {
 			printf("DHCP OPTION LENGTH: %d\n", l);
 			// Diag:
 			printf("MSG TYPE: %d\n", (int)b[i+2]);
-			if ( b[i+2] == DHCP_DISCOVER ) {
+			if ( b[i+2] == DHCP_STATE_DISCOVER ) {
 				printf("dhcp_discover mode\n");
-				ct->state = DHCP_DISCOVER;
+				ct->state = DHCP_STATE_DISCOVER;
 			}
 		} else if ( b[i] == DHCP_OP_HOSTNAME ) {
 			printf("DHCP OPTION: HOSTNAME\n");
@@ -102,8 +102,8 @@ int parse_options(unsigned char b[], trans_tb_t *ct) {
 	}
 	
 	// Based on our parsed options, perform an action:
-	if ( ct->state == DHCP_DISCOVER ) {
-		return DHCP_OFFER;
+	if ( ct->state == DHCP_STATE_DISCOVER ) {
+		return DHCP_STATE_OFFER;
 	} else {
 		return -1;
 	}
@@ -128,7 +128,7 @@ int parse_dhcp_msg(char *buf, int buflen, dhcp_msg_t *dmsg) {
 		unsigned char file[128];
 	} dhcp_msg_t; */
 
-	if ( buf[1] == DHCP_HW_ETH ) {
+	if ( buf[1] == DHCP_VAL_HW_ETH ) {
 		printf("Recieved DHCP Hardware Type of ETHERNET\n");
 		memcpy( &(dmsg->htype), &buf[1], 1);
 		
@@ -242,11 +242,11 @@ int main (int argc, char **argv[]) {
 		}
 
 		// Only support ETHERNET Hardware for v1:
-		if ( buf[1] == DHCP_HW_ETH ) {
+		if ( buf[1] == DHCP_VAL_HW_ETH ) {
 			printf("Recieved DHCP Hardware Type of ETHERNET\n");
 
 			// If DHCP Request:
-			if ( buf[0] == DHCP_MSG_REQUEST ) {
+			if ( buf[0] == DHCP_VAL_MSG_REQUEST ) {
 				printf("Recieved DHCP Message type of REQUEST\n");
 
 				// Client's MAC Address:
@@ -277,9 +277,9 @@ int main (int argc, char **argv[]) {
 				int ret;
 				trans_tb_t * ct;
 				ct = add_transaction_table(trans_tb_head, trans, clientmac);
-				if ((ret = parse_options(buf, ct)) == DHCP_OFFER) {
+				if ((ret = parse_options(buf, ct)) == DHCP_STATE_OFFER) {
 					send_dhcp_offer(ct, ip_tb_head);
-					char a[] = "DHCP_OFFER_PLACEHOLDER_UNDER_CONSTRUCTION";
+					char a[] = "DHCP_STATE_OFFER_PLACEHOLDER_UNDER_CONSTRUCTION";
 				}
 				//append_transaction_table(trans_tb_head, trans);
 				

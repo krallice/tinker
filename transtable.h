@@ -13,6 +13,9 @@
 #include "tinker.h"
 #include "iptable.h"
 
+// How long a transaction lives:
+#define TRANSTABLE_TRANSACTION_LIFETIME 45
+
 // Linked list for our transaction table:
 typedef struct trans_tb {
 	unsigned char trans[4];

@@ -32,20 +32,17 @@
 #define TINKER_PORT_SERVER 67
 #define TINKER_PORT_CLIENT 68
 
-#define TRANSACTION_LIFETIME 45
-
 // Core DHCP Values:
-#define DHCP_MSG_REQUEST 1
-#define DHCP_HW_ETH 1
+#define DHCP_VAL_MSG_REQUEST 1
+#define DHCP_VAL_HW_ETH 1
+
+// Our DHCP States:
+#define DHCP_STATE_DISCOVER 1
+#define DHCP_STATE_OFFER 2
 
 // DHCP Options //
 // Amount of bytes into the DHCP request the options begin:
-#define DHCP_OPTION_START 240
-
-// Our DHCP States:
-#define DHCP_DISCOVER 1
-#define DHCP_OFFER 2
-
+#define DHCP_OP_START 240
 // Our DHCP Option Numbers:
 #define DHCP_OP_MSG_TYPE 53
 #define DHCP_OP_HOSTNAME 12

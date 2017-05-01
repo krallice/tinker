@@ -70,7 +70,7 @@ void print_transaction_table(trans_tb_t *head) {
 	}
 }
 
-// For transactions that have being going on past our TRANSACTION_LIFETIME, blow them away:
+// For transactions that have being going on past our TRANSTABLE_TRANSACTION_LIFETIME, blow them away:
 void purge_transaction_table(trans_tb_t *head) {
 
 	// Assign and skip head node:
@@ -87,7 +87,7 @@ void purge_transaction_table(trans_tb_t *head) {
 	while ( current != NULL ) {
 
 		// Compare time deltas:
-		if ( ctime - current->timestamp >= TRANSACTION_LIFETIME ) {
+		if ( ctime - current->timestamp >= TRANSTABLE_TRANSACTION_LIFETIME ) {
 
 			// Print our diags:
 			printf("\n\n\nTransaction ID: %02x%02x%02x%02x ", 	current->trans[0], 
