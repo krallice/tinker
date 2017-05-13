@@ -12,7 +12,7 @@
 
 
 // Dynamically allocate and initialise our IP Table:
-ip_tb_t * init_ip_table() {
+ip_tb_t * init_ip_table(srv_iface_t * srv) {
 
 	ip_tb_t * ip_tb_head;
 

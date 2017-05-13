@@ -17,6 +17,8 @@
 //bound to 192.168.1.105 -- renewal in 37569 seconds.
 
 #include "tinker.h"
+#include "iface.h"
+#include "arp.h"
 #include "iptable.h"
 #include "transtable.h"
 
@@ -167,16 +169,23 @@ int main (int argc, char **argv[]) {
 	if ( TINKER_DEBUG ) {
 		printf("Starting tinker dhcp ip server now...\n");
 	}
-	
+
+	// Grab our ifindex and MAC for srv_iface
+	srv_iface_t * srv_iface;
+	srv_iface = init_srv_iface();
+	get_if_info(srv_iface);
+
 	// Init the first transaction table entry for our linked list:
 	trans_tb_t * trans_tb_head;
 	trans_tb_head = init_transaction_table();
 
-	// Let's build our IP Table:
+	// Build our IP Table:
 	ip_tb_t * ip_tb_head;
-	ip_tb_head = init_ip_table();
+	ip_tb_head = init_ip_table(srv_iface);
 
-	print_ip_table(ip_tb_head);
+	if ( TINKER_DEBUG ) {
+		print_ip_table(ip_tb_head);
+	}
 
 	// Define Sockaddr structures for me (server) and other (clients):
 	// sockaddr_in prototype:

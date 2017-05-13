@@ -26,11 +26,16 @@
 #include <sys/types.h>
 #include <time.h> 
 
+#include <linux/if_packet.h>
+#include <linux/if_ether.h>
+#include <linux/if_arp.h>
+
 // Service Specific Defines:
 #define TINKER_DEBUG 1 
 #define TINKER_BUFLEN 512
 #define TINKER_PORT_SERVER 67
 #define TINKER_PORT_CLIENT 68
+#define TINKER_IFNAME "eth0"
 
 // Core DHCP Values:
 #define DHCP_VAL_MSG_REQUEST 1

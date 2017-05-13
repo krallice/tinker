@@ -11,6 +11,7 @@
 #define IPTABLE_H
 
 #include "tinker.h"
+#include "iface.h"
 #include "transtable.h"
 
 #define START_IP "192.168.2.150"
@@ -25,10 +26,14 @@ typedef struct ip_tb {
 	struct ip_tb * next;
 } ip_tb_t;
 
-// Prototypes:
+// Build our linked list for the iptable. Recieve srv_iface_t
+// so that we can start to generate some arp to flesh out used IPs:
+ip_tb_t * init_ip_table(srv_iface_t *srv);
 
-ip_tb_t * init_ip_table();
+// Find and allocate our next IP:
 int allocate_free_ip(ip_tb_t *head, trans_tb_t *ct);
+
+// For debug purposes, print our iptable:
 void print_ip_table(ip_tb_t *head);
 
 #endif // IPTABLE_H
